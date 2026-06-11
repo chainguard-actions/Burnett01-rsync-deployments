@@ -1,0 +1,68 @@
+name: Test basic rsync deployment inputs
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Generate SSH key pair for testing
+        id: keygen
+        run: |
+          ssh-keygen -t rsa -b 2048 -f /tmp/test_key -N "" -q
+          echo "private_key=$(cat /tmp/test_key | base64 -w 0)" >> $GITHUB_OUTPUT
+          echo "public_key=$(cat /tmp/test_key.pub)" >> $GITHUB_OUTPUT
+
+      - name: Set up local SSH server
+        run: |
+          sudo apt-get install -y openssh-server
+          sudo mkdir -p /var/run/sshd
+          sudo ssh-keygen -A
+          # Create test user
+          sudo useradd -m -s /bin/bash testuser || true
+          sudo mkdir -p /home/testuser/.ssh
+          cat /tmp/test_key.pub | sudo tee /home/testuser/.ssh/authorized_keys
+          sudo chmod 700 /home/testuser/.ssh
+          sudo chmod 600 /home/testuser/.ssh/authorized_keys
+          sudo chown -R testuser:testuser /home/testuser/.ssh
+          # Create remote path
+          sudo mkdir -p /home/testuser/deploy
+          sudo chown testuser:testuser /home/testuser/deploy
+          # Start SSH server
+          sudo /usr/sbin/sshd -D &
+          sleep 2
+          echo "SSH server started"
+
+      - name: Create local path to sync
+        run: |
+          mkdir -p /tmp/local_deploy
+          echo "hello from rsync test" > /tmp/local_deploy/test.txt
+
+      - id: action
+        uses: .
+        with:
+          switches: '-avz --no-perms'
+          path: '/tmp/local_deploy/'
+          remote_path: '/home/testuser/deploy/'
+          remote_host: '127.0.0.1'
+          remote_port: 22
+          remote_user: 'testuser'
+          remote_key: ${{ steps.keygen.outputs.private_key }}
+          strict_hostkeys_checking: 'false'
+          legacy_allow_rsa_hostkeys: 'false'
+          debug: 'false'
+
+      - name: Assert file was synced
+        run: |
+          if [ ! -f /home/testuser/deploy/test.txt ]; then
+            echo "FAIL: expected /home/testuser/deploy/test.txt to exist after rsync"
+            exit 1
+          fi
+          CONTENT=$(cat /home/testuser/deploy/test.txt)
+          echo "actual content: $CONTENT"
+          if [ "$CONTENT" != "hello from rsync test" ]; then
+            echo "FAIL: unexpected file content"
+            exit 1
+          fi
+          echo "PASS"
