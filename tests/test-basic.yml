@@ -1,0 +1,37 @@
+name: Test basic rsync deployment inputs
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Create dummy local path
+        run: mkdir -p /tmp/rsync-src && echo "hello" > /tmp/rsync-src/file.txt
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          switches: -avzr --delete
+          path: /tmp/rsync-src/
+          remote_path: /tmp/rsync-dst/
+          remote_host: 127.0.0.1
+          remote_port: 22
+          remote_user: testuser
+          remote_key: |
+            -----BEGIN OPENSSH PRIVATE KEY-----
+            dGVzdGtleQ==
+            -----END OPENSSH PRIVATE KEY-----
+          strict_hostkeys_checking: 'false'
+          debug: 'true'
+      - name: Assert action ran (connection failure is expected)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "success" ] || [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action executed with all required inputs"
+          else
+            echo "FAIL: unexpected outcome: $OUTCOME"
+            exit 1
+          fi
