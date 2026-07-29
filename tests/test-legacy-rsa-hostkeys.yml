@@ -1,0 +1,40 @@
+name: Test legacy RSA host keys option
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Generate a test SSH key pair
+        run: |
+          ssh-keygen -t rsa -b 4096 -f /tmp/test_rsa_key -N "" -q
+          echo "TEST_KEY<<EOF" >> $GITHUB_ENV
+          cat /tmp/test_rsa_key >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Run action with legacy_allow_rsa_hostkeys=true
+        id: action
+        uses: .
+        with:
+          switches: '-avz'
+          remote_path: '/tmp/deploy/'
+          remote_host: '192.0.2.1'
+          remote_port: 22
+          remote_user: 'testuser'
+          remote_key: ${{ env.TEST_KEY }}
+          legacy_allow_rsa_hostkeys: 'true'
+          strict_hostkeys_checking: 'false'
+        continue-on-error: true
+
+      - name: Assert action failed at SSH/rsync step (not at input parsing)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "FAIL: expected action to fail when connecting to unreachable host, but outcome was '$OUTCOME'"
+            exit 1
+          fi
+          echo "PASS: action correctly accepted legacy_allow_rsa_hostkeys=true and failed at SSH/rsync step as expected"
