@@ -12,6 +12,7 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 | 8.0.3 | [`8.0.3`](https://github.com/chainguard-actions/Burnett01-rsync-deployments/tree/8.0.3) | [`7659d60`](https://github.com/Burnett01/rsync-deployments/commit/7659d600d8bdd035bb5cdfba1d4bd0dd4a307ca6) |
 | 8.0.4 | [`8.0.4`](https://github.com/chainguard-actions/Burnett01-rsync-deployments/tree/8.0.4) | [`dc0d5d4`](https://github.com/Burnett01/rsync-deployments/commit/dc0d5d44c4728aad3f02154a87309809e62a960f) |
 | 8.0.5 | [`8.0.5`](https://github.com/chainguard-actions/Burnett01-rsync-deployments/tree/8.0.5) | [`66257ca`](https://github.com/Burnett01/rsync-deployments/commit/66257cad6bfeb2171d3b6bfa6c9a22279dd9c3a1) |
+| 9.0.0 | [`9.0.0`](https://github.com/chainguard-actions/Burnett01-rsync-deployments/tree/9.0.0) | [`4d419d1`](https://github.com/Burnett01/rsync-deployments/commit/4d419d1dc46d4a8a2b6ceab2f951f0f93b2da8f5) |
 | v8 | [`v8`](https://github.com/chainguard-actions/Burnett01-rsync-deployments/tree/v8) | [`66257ca`](https://github.com/Burnett01/rsync-deployments/commit/66257cad6bfeb2171d3b6bfa6c9a22279dd9c3a1) |
 
 ## Privacy
