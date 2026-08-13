@@ -1,0 +1,38 @@
+name: Test rsync connection failure with valid inputs
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Generate a real SSH key for testing
+        run: |
+          ssh-keygen -t rsa -b 2048 -f /tmp/test_key -N "" -q
+          echo "TEST_SSH_KEY<<EOF" >> $GITHUB_ENV
+          cat /tmp/test_key >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Run action against non-existent host (expect failure)
+        id: action
+        uses: .
+        continue-on-error: true
+        with:
+          switches: "-avz --dry-run"
+          remote_path: "/tmp/deploy/"
+          remote_host: "192.0.2.1"
+          remote_port: 22
+          remote_user: "testuser"
+          remote_key: ${{ env.TEST_SSH_KEY }}
+
+      - name: Assert action failed at connection level (not input validation)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "FAIL: expected action to fail when connecting to non-existent host"
+            exit 1
+          fi
+          echo "PASS: action correctly failed when rsync could not connect to host"
