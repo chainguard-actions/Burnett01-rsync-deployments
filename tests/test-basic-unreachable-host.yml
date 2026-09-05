@@ -1,0 +1,45 @@
+name: Test basic usage with unreachable host
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Generate a dummy SSH key for testing
+        run: |
+          ssh-keygen -t ed25519 -f /tmp/test_key -N "" -C "test@example.com"
+          {
+            echo "TEST_KEY<<EOF"
+            cat /tmp/test_key
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          switches: "-avz --dry-run"
+          remote_path: "/tmp/deploy/"
+          remote_host: "192.0.2.1"
+          remote_port: 22
+          remote_user: "testuser"
+          remote_key: ${{ env.TEST_KEY }}
+          strict_hostkeys_checking: "false"
+          debug: "false"
+
+      - name: Assert action failed gracefully on unreachable host
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action correctly failed when host is unreachable (expected in test environment)"
+          elif [ "$OUTCOME" = "success" ]; then
+            echo "FAIL: action unexpectedly succeeded — no real host should be reachable at 192.0.2.1"
+            exit 1
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
