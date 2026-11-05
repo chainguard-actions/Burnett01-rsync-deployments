@@ -1,0 +1,69 @@
+name: Test basic rsync deploy
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Start a local SSH server as the deploy target
+        id: sshd
+        run: |
+          set -eux
+          SUDO=""
+          if [ "$(id -u)" -ne 0 ]; then SUDO=sudo; fi
+          export DEBIAN_FRONTEND=noninteractive
+          $SUDO apt-get update -qq
+          $SUDO apt-get install -y -qq openssh-server openssh-client rsync
+          $SUDO mkdir -p /run/sshd
+          $SUDO ssh-keygen -A
+          USER_NAME="$(id -un)"
+          USER_HOME="$(getent passwd "$USER_NAME" | cut -d: -f6)"
+          rm -f /tmp/deploy_key /tmp/deploy_key.pub
+          ssh-keygen -t ed25519 -N "" -f /tmp/deploy_key -q
+          mkdir -p "$USER_HOME/.ssh"
+          cat /tmp/deploy_key.pub >> "$USER_HOME/.ssh/authorized_keys"
+          chmod 700 "$USER_HOME/.ssh"
+          chmod 600 "$USER_HOME/.ssh/authorized_keys"
+          $SUDO /usr/sbin/sshd -p 2222 -o PermitRootLogin=yes -o StrictModes=no -o PasswordAuthentication=no
+          rm -rf /tmp/rsync-target
+          mkdir -p /tmp/rsync-target
+          HOST_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
+          if [ -z "$HOST_IP" ]; then HOST_IP="$(hostname -i | awk '{print $1}')"; fi
+          sleep 1
+          ssh -i /tmp/deploy_key -p 2222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$USER_NAME@$HOST_IP" true
+          {
+            echo "host=$HOST_IP"
+            echo "user=$USER_NAME"
+            echo "key<<EOF_DEPLOY_KEY"
+            cat /tmp/deploy_key
+            echo "EOF_DEPLOY_KEY"
+          } >> "$GITHUB_OUTPUT"
+      - id: action
+        uses: .
+        with:
+          switches: -avz
+          path: tests/fixtures/deploy-src/
+          remote_path: /tmp/rsync-target/
+          remote_host: ${{ steps.sshd.outputs.host }}
+          remote_port: 2222
+          remote_user: ${{ steps.sshd.outputs.user }}
+          remote_key: ${{ steps.sshd.outputs.key }}
+      - name: Assert files were deployed
+        run: |
+          ls -laR /tmp/rsync-target || true
+          if [ ! -f /tmp/rsync-target/hello.txt ]; then
+            echo "FAIL: hello.txt not deployed"
+            exit 1
+          fi
+          ACTUAL="$(cat /tmp/rsync-target/hello.txt)"
+          echo "actual: $ACTUAL"
+          if [ "$ACTUAL" != "hello from rsync-deployments" ]; then
+            echo "FAIL: unexpected hello.txt content"
+            exit 1
+          fi
+          if [ "$(cat /tmp/rsync-target/nested/world.txt 2>/dev/null)" != "nested world" ]; then
+            echo "FAIL: nested/world.txt missing or wrong"
+            exit 1
+          fi
+          echo "PASS"
