@@ -1,0 +1,69 @@
+name: Test deploy with --delete, custom rsh and debug
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Start a local sshd on 127.0.0.1:2223
+        id: sshd
+        run: |
+          set -e
+          if [ "$(id -u)" -eq 0 ]; then SUDO=""; else SUDO="sudo -n"; fi
+          if ! command -v sshd >/dev/null 2>&1 && [ ! -x /usr/sbin/sshd ] || ! command -v rsync >/dev/null 2>&1; then
+            $SUDO apt-get update -qq
+            DEBIAN_FRONTEND=noninteractive $SUDO apt-get install -y -qq openssh-server rsync >/dev/null
+          fi
+          $SUDO mkdir -p /run/sshd
+          $SUDO ssh-keygen -A
+          rm -f /tmp/test_key2 /tmp/test_key2.pub
+          ssh-keygen -t ed25519 -N "" -f /tmp/test_key2 -q
+          mkdir -p "$HOME/.ssh"
+          chmod 700 "$HOME/.ssh"
+          cat /tmp/test_key2.pub >> "$HOME/.ssh/authorized_keys"
+          chmod 600 "$HOME/.ssh/authorized_keys"
+          $SUDO /usr/sbin/sshd -p 2223 -o ListenAddress=127.0.0.1 \
+            -o PermitRootLogin=prohibit-password -o PasswordAuthentication=no \
+            -o PubkeyAuthentication=yes -o StrictModes=no
+          sleep 1
+          echo "user=$(id -un)" >> "$GITHUB_OUTPUT"
+          {
+            echo "key<<EOF_KEY"
+            cat /tmp/test_key2
+            echo "EOF_KEY"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Prepare source and stale target files
+        run: |
+          rm -rf "$GITHUB_WORKSPACE/deploy-src2" /tmp/rsync-target2
+          mkdir -p "$GITHUB_WORKSPACE/deploy-src2" /tmp/rsync-target2
+          echo "fresh" > "$GITHUB_WORKSPACE/deploy-src2/fresh.txt"
+          echo "stale" > /tmp/rsync-target2/stale.txt
+
+      - id: action
+        uses: .
+        with:
+          switches: -avz --delete
+          rsh: -o ConnectTimeout=20
+          debug: 'true'
+          path: deploy-src2/
+          remote_path: /tmp/rsync-target2/
+          remote_host: 127.0.0.1
+          remote_port: 2223
+          remote_user: ${{ steps.sshd.outputs.user }}
+          remote_key: ${{ steps.sshd.outputs.key }}
+
+      - name: Assert sync with delete
+        run: |
+          ls -la /tmp/rsync-target2 || true
+          if [ "$(cat /tmp/rsync-target2/fresh.txt 2>/dev/null)" != "fresh" ]; then
+            echo "FAIL: fresh.txt not deployed"
+            exit 1
+          fi
+          if [ -e /tmp/rsync-target2/stale.txt ]; then
+            echo "FAIL: stale.txt should have been deleted by --delete"
+            exit 1
+          fi
+          echo "PASS"
