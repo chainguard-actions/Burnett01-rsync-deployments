@@ -18,7 +18,7 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 | 9.0.3 | [`9.0.3`](https://github.com/chainguard-actions/Burnett01-rsync-deployments/tree/9.0.3) | [`c830011`](https://github.com/Burnett01/rsync-deployments/commit/c8300118e5f66a3fe187f35763d7e65848ae205a) | [`HARDENING.md`](https://github.com/chainguard-actions/Burnett01-rsync-deployments/blob/9.0.3/HARDENING.md) |
 | 9.0.4 | [`9.0.4`](https://github.com/chainguard-actions/Burnett01-rsync-deployments/tree/9.0.4) | [`b8733f9`](https://github.com/Burnett01/rsync-deployments/commit/b8733f9f81fe2d9c29b756e57cd373429be7bae2) | [`HARDENING.md`](https://github.com/chainguard-actions/Burnett01-rsync-deployments/blob/9.0.4/HARDENING.md) |
 | v8 | [`v8`](https://github.com/chainguard-actions/Burnett01-rsync-deployments/tree/v8) | [`66257ca`](https://github.com/Burnett01/rsync-deployments/commit/66257cad6bfeb2171d3b6bfa6c9a22279dd9c3a1) | [`HARDENING.md`](https://github.com/chainguard-actions/Burnett01-rsync-deployments/blob/v8/HARDENING.md) |
-| v9 | [`v9`](https://github.com/chainguard-actions/Burnett01-rsync-deployments/tree/v9) | [`4d419d1`](https://github.com/Burnett01/rsync-deployments/commit/4d419d1dc46d4a8a2b6ceab2f951f0f93b2da8f5) | [`HARDENING.md`](https://github.com/chainguard-actions/Burnett01-rsync-deployments/blob/v9/HARDENING.md) |
+| v9 | [`v9`](https://github.com/chainguard-actions/Burnett01-rsync-deployments/tree/v9) | [`b8733f9`](https://github.com/Burnett01/rsync-deployments/commit/b8733f9f81fe2d9c29b756e57cd373429be7bae2) | [`HARDENING.md`](https://github.com/chainguard-actions/Burnett01-rsync-deployments/blob/v9/HARDENING.md) |
 
 ## Privacy
 
