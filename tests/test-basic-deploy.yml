@@ -1,0 +1,45 @@
+name: Test basic deploy
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Start local sshd target
+        run: bash tests/fixtures/start-sshd.sh
+      - name: Create content to deploy
+        run: |
+          rm -rf deploy-src
+          mkdir -p deploy-src/sub
+          echo "hello world" > deploy-src/hello.txt
+          echo "nested" > deploy-src/sub/nested.txt
+          echo "should be excluded" > deploy-src/skip.txt
+      - id: action
+        uses: .
+        with:
+          switches: -avz --exclude=skip.txt
+          path: deploy-src/
+          remote_path: /home/deployer/deploy-target/
+          remote_host: ${{ env.DEPLOY_HOST }}
+          remote_port: ${{ env.DEPLOY_PORT }}
+          remote_user: ${{ env.DEPLOY_USER }}
+          remote_key: ${{ env.DEPLOY_KEY }}
+      - name: Assert files deployed
+        run: |
+          S=""; [ "$(id -u)" -ne 0 ] && S=sudo
+          $S ls -laR /home/deployer/deploy-target || true
+          ACTUAL="$($S cat /home/deployer/deploy-target/hello.txt)"
+          echo "hello.txt: $ACTUAL"
+          if [ "$ACTUAL" != "hello world" ]; then
+            echo "FAIL: hello.txt content mismatch"; exit 1
+          fi
+          NESTED="$($S cat /home/deployer/deploy-target/sub/nested.txt)"
+          echo "sub/nested.txt: $NESTED"
+          if [ "$NESTED" != "nested" ]; then
+            echo "FAIL: nested file content mismatch"; exit 1
+          fi
+          if $S test -e /home/deployer/deploy-target/skip.txt; then
+            echo "FAIL: skip.txt should have been excluded by switches"; exit 1
+          fi
+          echo "PASS"

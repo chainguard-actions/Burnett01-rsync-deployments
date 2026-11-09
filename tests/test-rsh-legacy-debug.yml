@@ -1,0 +1,37 @@
+name: Test rsh, legacy RSA host keys and debug options
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Start local sshd target
+        run: bash tests/fixtures/start-sshd.sh
+      - name: Create content to deploy
+        run: |
+          rm -rf opts-src
+          mkdir -p opts-src
+          echo "options" > opts-src/opts.txt
+      - id: action
+        uses: .
+        with:
+          switches: -rv
+          rsh: -o ConnectTimeout=20
+          legacy_allow_rsa_hostkeys: 'true'
+          debug: 'true'
+          path: opts-src/
+          remote_path: /home/deployer/opts-target/
+          remote_host: ${{ env.DEPLOY_HOST }}
+          remote_port: ${{ env.DEPLOY_PORT }}
+          remote_user: ${{ env.DEPLOY_USER }}
+          remote_key: ${{ env.DEPLOY_KEY }}
+      - name: Assert file deployed with extra ssh options
+        run: |
+          S=""; [ "$(id -u)" -ne 0 ] && S=sudo
+          ACTUAL="$($S cat /home/deployer/opts-target/opts.txt)"
+          echo "actual: $ACTUAL"
+          if [ "$ACTUAL" != "options" ]; then
+            echo "FAIL: expected 'options'"; exit 1
+          fi
+          echo "PASS"

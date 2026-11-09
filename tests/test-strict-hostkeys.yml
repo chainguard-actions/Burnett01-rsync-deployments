@@ -1,0 +1,35 @@
+name: Test strict host keys checking
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Start local sshd target
+        run: bash tests/fixtures/start-sshd.sh
+      - name: Create content to deploy
+        run: |
+          rm -rf strict-src
+          mkdir -p strict-src
+          echo "strict" > strict-src/strict.txt
+      - id: action
+        uses: .
+        with:
+          switches: -av
+          strict_hostkeys_checking: 'true'
+          path: strict-src/
+          remote_path: /home/deployer/strict-target/
+          remote_host: ${{ env.DEPLOY_HOST }}
+          remote_port: ${{ env.DEPLOY_PORT }}
+          remote_user: ${{ env.DEPLOY_USER }}
+          remote_key: ${{ env.DEPLOY_KEY }}
+      - name: Assert file deployed with strict host key checking
+        run: |
+          S=""; [ "$(id -u)" -ne 0 ] && S=sudo
+          ACTUAL="$($S cat /home/deployer/strict-target/strict.txt)"
+          echo "actual: $ACTUAL"
+          if [ "$ACTUAL" != "strict" ]; then
+            echo "FAIL: expected 'strict'"; exit 1
+          fi
+          echo "PASS"

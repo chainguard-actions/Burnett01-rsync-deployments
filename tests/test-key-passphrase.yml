@@ -1,0 +1,35 @@
+name: Test passphrase-protected key
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Start local sshd target with passphrase-protected client key
+        run: bash tests/fixtures/start-sshd.sh "s3cret-pass"
+      - name: Create content to deploy
+        run: |
+          rm -rf pass-src
+          mkdir -p pass-src
+          echo "passphrase ok" > pass-src/pass.txt
+      - id: action
+        uses: .
+        with:
+          switches: -avz
+          path: pass-src/
+          remote_path: /home/deployer/pass-target/
+          remote_host: ${{ env.DEPLOY_HOST }}
+          remote_port: ${{ env.DEPLOY_PORT }}
+          remote_user: ${{ env.DEPLOY_USER }}
+          remote_key: ${{ env.DEPLOY_KEY }}
+          remote_key_pass: ${{ env.DEPLOY_KEY_PASS }}
+      - name: Assert file deployed using passphrase key
+        run: |
+          S=""; [ "$(id -u)" -ne 0 ] && S=sudo
+          ACTUAL="$($S cat /home/deployer/pass-target/pass.txt)"
+          echo "actual: $ACTUAL"
+          if [ "$ACTUAL" != "passphrase ok" ]; then
+            echo "FAIL: expected 'passphrase ok'"; exit 1
+          fi
+          echo "PASS"
